@@ -1,0 +1,43 @@
+================================================================================
+NHAT KY THAY DOI: CAP NHAT GIAO DIEN LOCATION DETECTER, LOGO, AN ROI TREN LIVE VA NAP MODEL BEST2.ONNX
+Ngay thuc hien: 22/10/2026
+================================================================================
+
+1. MUC TIEU THUC HIEN:
+   - Cap nhat giao dien:
+     + Them logo (logo.jpg) vao goc tren ben trai cua tieu de giao dien.
+     + Doi dong tieu de tu "PALLET DETECTION SYSTEM" thanh "LOCATION DETECTER".
+     + Khong hien thi khung net ve ROI co dinh tren man hinh Live nua, chi hien thi khung ROI tren anh sau khi thuc hien Detect (Single Detection / Real Time Detection).
+   - Cap nhat cau hinh nap AI model:
+     + Uu tien tu dong nap model best2.onnx dau tien khi ung dung khoi dong (neu chua co se tu dong fallback ve best1.onnx / best.onnx de tranh loi).
+
+2. DANH SACH TEP TIN DA THAY DOI:
+   [SUA DOI]:
+   - PalletDetection\MainWindow.xaml:
+     + Doi Window Title="LOCATION DETECTER".
+     + Tai Grid.Row="0": Thay the TextBlock tieu de cu bang Grid header gom:
+       * Image Source="logo.jpg" (Height 45, Stretch Uniform, can trai goc tren).
+       * TextBlock Text="LOCATION DETECTER" (FontSize 28, Bold, can giua toan man hinh).
+   - PalletDetection\PalletDetection.csproj:
+     + Dang ky logo.jpg duoi dang Resource va None CopyToOutputDirectory=PreserveNewest.
+     + Dang ky best2.onnx Condition="Exists('best2.onnx')" CopyToOutputDirectory=PreserveNewest.
+   - PalletDetection\MainWindow.xaml.cs:
+     + Trong canvasRoi_MouseUp(): Sau khi nguoi dung keo chuot ve xong vung ROI, toa do van duoc luu vao _roiImageRect va hien thi len txtRoiStatus, dong thoi goi canvasRoi.Children.Clear() de xoa khung net ve tren canvas giup video Live sach va thong thoang.
+     + Trong RedrawRoiOverlay(): Khong ve hinh chu nhat mau vang co dinh de len canvas nua (canvasRoi.Children.Clear()). Khung ROI se do ham OpenCV YoloV8Detector.AnnotateImage tu dong ve len anh ket qua sau khi detect.
+     + Trong AutoLoadDefaultModel(): Dua best2.onnx len dau danh sach duong dan tim kiem tu dong truoc khi fallback ve best1.onnx / best.onnx.
+   - Thu muc bin\x64\Debug va bin\x64\Release:
+     + Da copy va dong bo tep logo.jpg vao thu muc chay thuc thi.
+
+3. KET QUA KIEM THU:
+   - Rebuild MSBuild (Debug & Release): THANH CONG (0 Errors, 0 Warnings moi).
+   - Integrity Check: Khong co bat ky loi ma hoa ky tu hay mojibake nao (UTF-8 with BOM duoc bao toan 100%).
+   - Smoke Test: PalletDetection.exe (PID: 6568) khoi chay doc lap on dinh tren ca ban Debug va Release.
+
+4. HUONG DAN SU DUNG:
+   - Logo & Tieu de: Khi mo ung dung, logo.jpg se xuat hien ngay goc tren ben trai va dong tieu de "LOCATION DETECTER" hien thi o chinh giua.
+   - Ve va xem ROI:
+     + Vao Tab Configuration -> Bam "TAO ROI" -> Keo chuot ve tren anh.
+     + Khi tha chuot: Toa do da duoc ghi nhan (hien tren status "ROI: [X, Y, WxH]") nhung man hinh Live van thong thoang, khong bi khung vang che khuat.
+     + Bam "SINGLE DETECTION" hoac bat "REAL TIME DETECTION": Khung ROI vien vang kem chu "ROI" se duoc ve sac net truc tiep len anh ket qua cung cac bounding box cua vat the.
+   - Model AI: Khi ban dat tep "best2.onnx" vao thu muc ung dung, he thong se tu dong uu tien nap model nay khi mo app.
+================================================================================

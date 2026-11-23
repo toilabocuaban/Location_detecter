@@ -1,0 +1,80 @@
+================================================================================
+NHAT KY THAY DOI: BO SUNG MODULE REST API CLIENT KET NOI HIKROBOT RCS-2000
+================================================================================
+Ngay thuc hien: 2026-10-15
+Tac gia: Antigravity AI Agent
+Project: PalletDetection (.NET Framework 4.8 / WPF)
+
+I. BOI CANH VA MUC TIEU
+- Mo rong ung dung PalletDetection hien tai (da chay on dinh nhan dien camera & AI YOLOv8) 
+  bang cach bo sung mot module REST API doc lap de gui yeu cau tao task den Hikrobot RCS-2000 
+  qua HTTP POST (Section 5.2.1 genAgvSchedulingTask).
+- Yeu cau bat buoc:
+  + KHONG sua doi hay pha vo logic cua cac module hien co (Camera, Vision, SDK, MainWindow).
+  + Khong hard-code RCS that, khong lam lo token xac thuc trong log file.
+  + Chuyen doi giua Mockoon va RCS that thong qua file cau hinh rcs_config.json ma khong can build lai.
+  + Phan biet ro HTTP Error, Network Error, Timeout, Json Parse Error va Business Error.
+  + TUYET DOI KHONG tu dong retry POST khi timeout/loi mang de tranh tao trung task tren AGV.
+
+II. DANH SACH FILE DA TAO MOI
+1. Rcs/Models/PositionCodeItem.cs:
+   - Mo hinh du lieu node vi tri (positionCode, type: "00", "02", "05").
+2. Rcs/Models/CreateTaskRequest.cs:
+   - Mo hinh du lieu request day du theo Bang 5-11 tai lieu RCS-2000 V3.3.
+   - Bao gom reqCode, reqTime, clientCode, tokenCode, taskTyp, wbCode, positionCodePath, podCode, priority, data...
+   - Gan Newtonsoft.Json JsonProperty voi NullValueHandling = Ignore.
+3. Rcs/Models/RcsApiResponse.cs:
+   - Mo hinh du lieu phan hoi JSON tu RCS-2000 (code, message, reqCode, data).
+   - Helper IsSuccess (code == "0"), TaskCode.
+4. Rcs/Models/RcsCallResult.cs:
+   - Dong goi ket qua tra ve: Enum RcsCallStatus (Success, BusinessError, HttpError, NetworkError, Timeout, JsonParseError).
+   - Doi chieu tinh toan ven giua reqCode gui di va reqCode tra ve (IsReqCodeMatched).
+5. Rcs/Config/RcsApiConfig.cs:
+   - Quan ly BaseUrl, EndpointPath, TokenCode, ClientCode, TimeoutSeconds.
+   - Tu dong doc/ghi ra file rcs_config.json nam canh file PalletDetection.exe.
+6. Rcs/Logging/IRcsLogger.cs & RcsLogger.cs:
+   - Ghi log bat dong bo/thread-safe ra thu muc Logs/rcs_api_yyyyMMdd.log.
+   - Tu dong an token bang Regex va chuoi cau hinh (***MASKED***) de khong lam lo thong tin xac thuc.
+7. Rcs/Client/RcsApiClient.cs:
+   - HttpClient async POST genAgvSchedulingTask.
+   - Tu dong dien GUID cho reqCode, thoi gian hien tai cho reqTime neu caller chua truyen.
+   - Tinh toan thoi gian phan hoi (DurationMs).
+   - Bat chinh xac TaskCanceledException (Timeout), HttpRequestException (NetworkError), HttpStatusCode != 200, JsonException.
+   - Cam ket KHONG tu dong retry POST.
+8. Rcs/Testing/RcsApiTester.cs:
+   - Cung cap cac phuong thuc kiem thu doc lap voi Mockoon (RunTestSuccessAsync, RunTestBusinessErrorAsync, RunTestNetworkErrorAsync, RunTestTimeoutAsync, VerifyTokenMasking).
+9. rcs_config.json:
+   - File cau hinh ket noi mau dat tai thu muc chay, mac dinh tro ve http://127.0.0.1:8182 (Mockoon).
+10. rcs_2000_mockoon_environment.json:
+   - File template import truc tiep vao ung dung Mockoon de gia lap RCS-2000 day du cac kich ban.
+
+III. DANH SACH FILE DA SUA
+1. packages.config:
+   - Them package Newtonsoft.Json v13.0.3 theo phe duyet cua nguoi dung.
+2. PalletDetection.csproj:
+   - Them tham chieu Reference den Newtonsoft.Json.dll.
+   - Them danh sach 9 file .cs cua module Rcs vao ItemGroup Compile.
+   - Them rcs_config.json voi che do PreserveNewest de copy ra thu muc output khi build.
+
+IV. KET QUA KIEM THU (XAC MINH THUC TE 100%)
+- Build solution: Succeeded voi 0 Errors.
+- Kich ban 1 (Token Masking): PASSED (Token duoc thay the thanh ***MASKED*** trong log).
+- Kich ban 2 (Happy Path - HTTP 200, code "0"): PASSED (Status: Success, Nhan dung TaskCode, reqCode doi chieu trung khop).
+- Kich ban 3 (Business Error - HTTP 200, code "1"): PASSED (Status: BusinessError, Bắt đúng mã lỗi và mô tả lỗi từ RCS).
+- Kich ban 4 (Network Error - Port khong ton tai): PASSED (Status: Timeout/NetworkError).
+- Kich ban 5 (Timeout - Server delay > Timeout): PASSED (Status: Timeout, Không retry POST).
+- Kich ban 6 (Server Error - HTTP 500): PASSED (Status: HttpError, HttpStatusCode: 500).
+- File log Logs/rcs_api_20261015.log da duoc sinh ra va ghi day du thong tin theo format chuan.
+
+V. HUONG DAN SU DUNG VA CAU HINH MOCKOON
+1. Cau hinh Mockoon:
+   - Mo ung dung Mockoon -> Nhan Ctrl+O (hoac File -> Open environment).
+   - Chon file "rcs_2000_mockoon_environment.json" trong thu muc project.
+   - Nhan nut Start (Play) o Mockoon tren cong 8182.
+   - Vao tab "Logs" trong Mockoon de xem moi request ung dung gui toi.
+2. Chuyen sang RCS-2000 that:
+   - Mo file rcs_config.json trong thu muc chay (bin\x64\Debug hoac Release).
+   - Chinh sua "baseUrl" thanh dia chi IP RCS that (vi du: "http://192.168.1.100:8182").
+   - Dien "tokenCode" do RCS cap neu he thong co bat bao mat.
+   - Luu file va chay ung dung, khong can bien dich lai!
+================================================================================

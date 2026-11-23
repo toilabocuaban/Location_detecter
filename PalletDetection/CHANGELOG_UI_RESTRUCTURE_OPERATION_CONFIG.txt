@@ -1,0 +1,47 @@
+================================================================================
+NHAT KY THAY DOI: TAI CAU TRUC GIAO DIEN TAB OPERATION & CONFIGURATION
+================================================================================
+Ngay thuc hien: 2026-10-15
+Tac gia: Antigravity AI Agent
+Project: PalletDetection (.NET Framework 4.8 / WPF)
+
+I. BOI CANH VA MUC TIEU
+- Chinh sua giao dien ung dung, KHONG lam anh huong den backend:
+  1. Tab Configuration:
+     Chuyen toan bo cac chuc nang van hanh sang Tab Configuration:
+     - START LIVE (btnStartLive)
+     - STOP LIVE (btnStopLive)
+     - SAVE IMAGE (btnSaveImage)
+     - Tu dong gui task RCS (chkAutoSendRcsTask - CheckBox bat/tat tinh nang)
+     - Nhan dien => Doi ten thanh SINGLE DETECTION (btnDetect)
+     - REAL TIME DETECTION (btnRealTime)
+  2. Tab Operation:
+     Chi hien thi thong tin giam sat thuan tuy (Dashboard):
+     - SYSTEM SUMMARY: Trang thai Camera, Do phan giai, AI Model, Vung ROI, So luong & thong ke nhan dien, Trang thai chu ky RCS.
+     - OPERATION LOGS: Khung TextBox hien thi nhat ky hoat dong thoi gian thuc, ghi nhan cac su kien ket noi, nhan dien va ket qua goi RCS API (qua OnLogEntry), kem nut CLEAR LOG.
+
+II. DANH SACH FILE DA SUA
+1. MainWindow.xaml:
+   - Tab Operation:
+     + Chuyen cac nut dieu khien sang Configuration.
+     + Bo sung TextBlock SYSTEM SUMMARY (txtOpModelInfo, txtOpRoiInfo, txtDetectSummary, txtRcsCycleStatus).
+     + Bo sung TextBlock OPERATION LOGS, TextBox txtOperationLog (cuon tu dong, font Consolas) va Button btnClearLog.
+   - Tab Configuration:
+     + Gom nhom khoa hoc:
+       * CAMERA CONNECTION: IP, Port, Username, Password, CONNECT CAMERA.
+       * STREAM & CAPTURE: START LIVE, STOP LIVE, SAVE IMAGE.
+       * AI MODEL & DETECTION: CHON MODEL (.ONNX), SINGLE DETECTION, REAL TIME DETECTION, CheckBox Tu dong gui Task RCS.
+       * ROI SETTINGS: TAO ROI, XOA ROI.
+2. MainWindow.xaml.cs:
+   - Giu nguyen 100% logic backend cu, khong sua chu ky cac ham cu.
+   - Them phuong thuc thread-safe AppendLog(string message) va btnClearLog_Click.
+   - Ket noi su kien OnLogEntry tu _rcsCycleManager.Logger vao txtOperationLog.
+   - Ghi log su kien nguoi dung (Connect Camera, Start Live, Stop Live, Save Image, Nạp Model, Single Detection, Real Time).
+3. Rcs/Automation/RcsTaskCycleManager.cs:
+   - Mo public thuoc tinh public IRcsLogger Logger => _logger; de MainWindow co the ket noi su kien log.
+
+III. KET QUA KIEM THU (PASSED 100%)
+- Build Solution: Succeeded voi 0 Errors.
+- Toan bo 5 kich ban kiem thu may trang thai chu ky RCS deu PASSED 100%.
+- Khong gay loi binding hay crash ung dung.
+================================================================================

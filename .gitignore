@@ -1,0 +1,10 @@
+.vs/
+packages/
+bin/
+obj/
+nuget.exe
+*.user
+*.suo
+*.log
+RcsLogs/
+Logs/

@@ -1,0 +1,67 @@
+========================================================================
+TỔNG HỢP THAY ĐỔI - KIỂM TRA KẾT NỐI TCP & HỖ TRỢ SSL TỰ KÝ MẠNG LAN
+Dự án: Location Detecter 1 (PalletDetection)
+Ngày cập nhật: 2026-11-23
+========================================================================
+
+1. NGUYÊN NHÂN VẤN ĐỀ CŨ
+- MainWindow.xaml khởi tạo mặc định ellRcsDot màu xanh (#22C55E) và
+  txtRcsCycleStatus là "RCS: Sẵn sàng" dù chưa từng kiểm tra hay gọi
+  tới máy chủ RCS-2000.
+- MainWindow.xaml.cs dùng biểu thức (!_lastRcsCallFailed) nên trước khi
+  có giao dịch lỗi đầu tiên, đèn RCS luôn báo xanh.
+- RcsV4ApiClient.cs dùng HttpClient() mặc định chưa xử lý chứng chỉ
+  SSL tự ký trên máy chủ RCS mạng LAN nội bộ (https://192.168.65.193).
+
+2. CÁC FILE TẠO MỚI
+- PalletDetection\Rcs\Client\RcsConnectionChecker.cs:
+  + Định nghĩa RcsConnectionCheckResult và RcsConnectionChecker.
+  + CheckTcpReachableAsync(endpointUrl, timeoutMs = 2000, cancellationToken):
+    kiểm tra kết nối TCP tới Host:Port lấy từ URL cấu hình (tự nhận cổng
+    mặc định 443 với https / 80 với http), KHÔNG gửi dữ liệu nghiệp vụ
+    nên không tạo task giả trên RCS.
+    Xử lý timeout/hủy an toàn, giải phóng TcpClient và quan sát fault
+    để tránh UnobservedTaskException.
+
+3. CÁC FILE CHỈNH SỬA
+- PalletDetection\Rcs\Client\RcsV4ApiClient.cs:
+  + Thay HttpClient mặc định bằng WebRequestHandler cấu hình
+    ServerCertificateValidationCallback = ValidateServerCertificate.
+  + Bổ sung ValidateServerCertificate & IsLocalOrPrivateHost: chỉ cho
+    phép chứng chỉ tự ký đối với loopback (127.0.0.1, ::1, localhost),
+    mạng LAN riêng RFC1918 (10.x, 172.16-31.x, 192.168.x), link-local
+    (169.254.x, fe80::/10), IPv6 ULA/site-local, *.local hoặc tên máy
+    nội bộ; từ chối IP/tên miền công cộng.
+  + Bổ sung trích xuất chi tiết lỗi gốc (GetBaseException().Message)
+    khi xảy ra HttpRequestException.
+- PalletDetection\PalletDetection.csproj:
+  + Thêm Reference System.Net.Http.WebRequest.
+  + Thêm Compile Include="Rcs\Client\RcsConnectionChecker.cs".
+- PalletDetection\MainWindow.xaml:
+  + Đặt x:Name="pnlRcsIndicator" cho cụm đèn RCS trên thanh Header,
+    chuyển màu khởi tạo của ellRcsDot sang xám (#94A3B8), ToolTip
+    "RCS: Đang kiểm tra kết nối...".
+  + Chuyển txtRcsCycleStatus mặc định sang "RCS: Đang kiểm tra kết nối..."
+    với màu chữ xám (#64748B).
+- PalletDetection\MainWindow.xaml.cs:
+  + Bổ sung trạng thái thực _isRcsReachable (null = đang kiểm tra/xám,
+    true = kết nối tốt/xanh, false = mất kết nối hoặc lỗi/đỏ).
+  + Khởi chạy kiểm tra kết nối TCP không chặn UI ngay khi mở ứng dụng
+    (AutoConnectAndInitSystemAsync), định kỳ mỗi 10 giây (DispatcherTimer
+    chống chồng chéo bằng Interlocked) và ngay sau khi bấm Lưu cấu hình
+    RCS (btnSaveRcsConfig_Click).
+  + Cập nhật ToolTip chi tiết (Host:Port + độ trễ ms hoặc lý do lỗi) và
+    đồng bộ txtRcsCycleStatus khi không chạy chu trình RealTime (bao gồm
+    lúc StopRealTimeAsync thay cho dòng gán cứng "RCS: Sẵn sàng").
+  + Cập nhật _isRcsReachable khi OnRcsTaskCompleted hoàn tất (Success ->
+    true; NetworkError/Timeout -> false) và dừng/hủy sạch tài nguyên
+    trong Window_Closing.
+
+4. KẾT QUẢ BUILD & KIỂM THỬ
+- MSBuild Release|x64 & Debug|x64: Thành công (0 lỗi).
+- VerifyRcsConnectivity.exe: PASS: 53 assertions.
+  (Kiểm tra TCP mở/đóng/URL sai/hủy tác vụ, IsLocalOrPrivateHost,
+   ValidateServerCertificate LAN vs domain công cộng, lỗi mạng
+   RcsV4ApiClient, và trạng thái khởi tạo XAML/MainWindow).
+- VerifyPalletUi.exe: PASS: 34 assertions.
+========================================================================

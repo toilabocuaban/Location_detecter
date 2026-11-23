@@ -1,0 +1,71 @@
+================================================================================
+TÓM TẮT THAY ĐỔI: GIAO DIỆN HIỆN ĐẠI LOCATION DETECTER (ĐỒNG BỘ TRẠM AUTOSCAN)
+Ngày thực hiện: 2026-11-23
+Dự án: D:\work\vision\Location Detecter\Location Detecter\Program\Location Detecter 1\PalletDetection\PalletDetection.sln
+================================================================================
+
+1. MỤC TIÊU:
+- Nâng cấp giao diện Location Detecter 1 (PalletDetection) theo phong cách HMI công
+  nghiệp hiện đại đồng bộ với TRẠM AUTOSCAN:
+  + Header xanh navy (#122B49) gồm logo ETEK, tiêu đề "LOCATION DETECTER", badge chế độ
+    (AUTO / MANUAL / STANDBY) và 3 đèn tròn trạng thái Camera / AI / RCS.
+  + Loại bỏ hoàn toàn thanh chọn Tab Operation / Configuration.
+  + Banner trạng thái toàn chiều ngang đổi màu trực quan theo chu kỳ AI/RCS kèm 2 nút
+    "Khởi động" và "Dừng".
+  + Cột trái hiển thị khung Camera / AI / ROI (giữ nguyên imgLive + canvasRoi vẽ ROI).
+  + Cột phải hiển thị KẾT QUẢ GỬI TASK GẦN NHẤT (OK/NG/CHỜ, Mã Task, Thời điểm,
+    Thời gian gọi ms), 3 thẻ KPI (TỔNG / OK / NG), bảng LỊCH SỬ GỬI TASK và 2 nút
+    "Lịch sử" & "Cài đặt" ở góc dưới phải.
+  + Khi bấm "Cài đặt", cột phải chuyển sang bảng Cấu hình Quản trị viên trong khi
+    vẫn giữ nguyên khung Camera bên trái để admin vẽ ROI và test Single Detection.
+- Giữ nguyên toàn bộ chữ ký public cũ, không thêm dependency mới, không sửa các file
+  rcs_config.json, camera_config.json, admin_config.json, roi_config.json.
+
+2. DANH SÁCH FILE ĐÃ TẠO MỚI:
+- Models/TaskHistoryItem.cs:
+  Model dữ liệu cho từng dòng lịch sử gửi Task RCS V4.2.0 (TimeText, TaskCode,
+  RouteText, TaskAndRouteDisplay, IsSuccess, DurationMs, ResultKind, ResultBadgeText).
+- Resources/DashboardStyles.xaml:
+  ResourceDictionary định nghĩa bảng màu Navy/Slate và các style nút, banner, card,
+  KPI, DataGrid, Settings section thuần WPF.
+- Views/HistoryLogWindow.xaml & Views/HistoryLogWindow.xaml.cs:
+  Cửa sổ xem 100 phiên gửi Task gần nhất và tối đa 500 dòng nhật ký hệ thống
+  (có nút "Xóa nhật ký") khi bấm nút "Lịch sử".
+- CHANGELOG_MODERN_HMI_UI.txt (file này).
+
+3. DANH SÁCH FILE ĐÃ SỬA:
+- Rcs/Automation/RcsTaskCycleManager.cs:
+  + Bổ sung sự kiện public event Action<RcsCallResult, string, string> OnTaskCompleted
+    phát ra ngoài lock sau khi SendTaskInternalAsync() hoàn tất (cả thành công lẫn lỗi).
+- App.xaml:
+  + Merge Resources/DashboardStyles.xaml vào Application.Resources.
+- MainWindow.xaml & MainWindow.xaml.cs:
+  + Thiết kế lại layout mới giữ nguyên toàn bộ x:Name cũ và luồng Camera Hikvision,
+    YOLOv8 ONNX, vẽ/lưu ROI, xác thực Admin, DPAPI camera config và RCS V4.2.0.
+  + Bổ sung UpdateHeaderIndicators(), SetStatusBanner(), OnRcsCycleStateChanged(),
+    OnRcsTaskCompleted(), btnOpenSettings_Click(), btnCloseSettings_Click(),
+    btnOpenHistory_Click() và chuyển log từ TextBox cũ sang ObservableCollection
+    _operationLogs (hiển thị trong HistoryLogWindow).
+- PalletDetection.csproj:
+  + Đăng ký TaskHistoryItem.cs, DashboardStyles.xaml và HistoryLogWindow.xaml/.cs.
+
+4. KẾT QUẢ BUILD & KIỂM TRA:
+- MSBuild Release|x64 (PalletDetection.sln): THÀNH CÔNG (0 errors)
+  -> bin\x64\Release\PalletDetection.exe
+- MSBuild Debug|x64 (PalletDetection.sln): THÀNH CÔNG (0 errors)
+  -> bin\x64\Debug\PalletDetection.exe
+- Kiểm chứng tự động (VerifyPalletUi):
+  PASS toàn bộ assertions cho TaskHistoryItem, RcsTaskCycleManager.OnTaskCompleted
+  (cả Success lẫn BusinessError), DashboardStyles.xaml, HistoryLogWindow STA và
+  đầy đủ control fields trên MainWindow.
+
+5. HƯỚNG DẪN SỬ DỤNG & KIỂM TRA THỦ CÔNG:
+- Chạy bản mới tại:
+  D:\work\vision\Location Detecter\Location Detecter\Program\Location Detecter 1\PalletDetection\PalletDetection\bin\x64\Release\PalletDetection.exe
+- Khi mở app, khung bên trái hiển thị Camera & ROI; cột phải hiển thị Kết quả gửi task,
+  3 KPI TỔNG/OK/NG và Lịch sử gửi task.
+- Nhấn "Cài đặt" ở góc dưới phải để đăng nhập Quản trị viên, vẽ ROI trực tiếp trên
+  khung Camera bên trái, chọn model ONNX hoặc cấu hình URL/TaskType/RobotCode RCS V4.2;
+  nhấn "← Quay lại Vận hành" để trở về màn hình giám sát.
+- Nhấn "Lịch sử" để xem nhật ký log chi tiết và toàn bộ lịch sử 100 task.
+================================================================================

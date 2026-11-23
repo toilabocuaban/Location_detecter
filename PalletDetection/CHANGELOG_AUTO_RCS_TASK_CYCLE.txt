@@ -1,0 +1,55 @@
+================================================================================
+NHAT KY THAY DOI: TICH HOP TU DONG GUI TASK DEN RCS-2000 DUA TREN YOLO
+================================================================================
+Ngay thuc hien: 2026-10-15
+Tac gia: Antigravity AI Agent
+Project: PalletDetection (.NET Framework 4.8 / WPF)
+
+I. BOI CANH VA MUC TIEU
+- Mo rong ung dung PalletDetection: Tu dong gui yeu cau tao task den RCS-2000 (Mockoon)
+  khi thoa man dong thoi hai dieu kien nhan dien tu YOLO:
+  1. Phat hien thung hang (Product) on dinh lien tuc trong it nhat 2.0 giay.
+  2. Nguoi (Human) da roi di, vang mat lien tuc trong it nhat 1.0 giay.
+- Dam bao cac nguyen tac nghiep vu:
+  + Su dung model best1.onnx (Class 0: Human, Class 1: Product).
+  + Neu nguoi xuat hien tro lai truoc khi du 1 giay, tinh lai thoi gian cho tu dau.
+  + Moi chu ky hop le chi duoc gui DUY NHAT mot task, khong gui lap lai.
+  + Khong tu dong retry khi timeout hoac mat ket noi de tranh tao task trung tren AGV.
+  + Chi reset chu ky khi thung hang hien tai bien mat va sau do xuat hien thung moi.
+
+II. DANH SACH FILE DA TAO MOI
+1. Rcs/Automation/RcsTaskCycleManager.cs:
+   - May trang thai (State Machine) 5 trang thai:
+     + WaitingForBox: Cho thung hang xuat hien.
+     + BoxStabilizing: Dem thoi gian thung on dinh (lien tuc >= 2.0s). Neu mat thung thi reset.
+     + WaitingForHumanDeparture: Thung da on dinh, dem thoi gian nguoi vang mat (lien tuc >= 1.0s).
+       Neu nguoi xuat hien lai -> reset bo dem vang nguoi ve 0.
+     + TaskTriggered: Kich hoat gui task bat dong bo qua RcsApiClient, danh dau HasSentTaskInCycle = true.
+     + WaitingForBoxClear: Cho thung hang hien tai bien mat hoan toan (> 0.5s) de reset chu ky moi.
+   - Ham IsBox(): Nhan dien cac class "product", "box", "carton", "pallet".
+   - Ham IsHuman(): Nhan dien cac class "human", "person".
+   - Cung cap thong tin tien trinh thoi gian de hien thi truc quan len giao dien.
+
+III. DANH SACH FILE DA SUA
+1. PalletDetection.csproj:
+   - Them Rcs\Automation\RcsTaskCycleManager.cs vao ItemGroup Compile.
+   - Them best1.onnx vao ItemGroup None voi PreserveNewest de copy ra thu muc bin khi build.
+2. MainWindow.xaml:
+   - Bo sung TextBlock txtRcsCycleStatus hien thi trang thai chu ky theo thoi gian thuc.
+   - Bo sung CheckBox chkAutoSendRcsTask cho phep nguoi dung chu dong bat/tat tinh nang tu dong gui task.
+3. MainWindow.xaml.cs:
+   - Khoi tao _rcsCycleManager trong constructor.
+   - Cap nhat AutoLoadDefaultModel() uu tien nap best1.onnx neu ton tai trong thu muc.
+   - Gan hook goi _rcsCycleManager.ProcessFrame(detections) trong vong lap Real Time.
+   - Cap nhat chuoi trang thai chu ky len txtRcsCycleStatus mượt mà qua Dispatcher.
+   - Reset chu ky khi StopRealTimeDetection() va Dispose tai nguyen khi Window_Closing.
+
+IV. KET QUA KIEM THU THUC TE (PASSED 100%)
+- Build Solution: Succeeded voi 0 Errors.
+- Kich ban 1 (Thung chua du 2s bi mat): PASSED (State quay lai WaitingForBox).
+- Kich ban 2 (Nguoi quay lai truoc 1s): PASSED (Reset bo dem vang nguoi, chua gui task).
+- Kich ban 3 (Thung on dinh 2s + Nguoi vang mat 1s): PASSED (Gui task thanh cong den Mockoon, nhan TaskCode).
+- Kich ban 4 (Chong gui trung): PASSED (Frame tiep theo khong gui lai task).
+- Kich ban 5 (Reset chu ky): PASSED (Thung bien mat -> Reset ve WaitingForBox, san sang nhan thung moi).
+- Nhat ky log day du trong bin\x64\Debug\Logs\rcs_api_20261015.log.
+================================================================================

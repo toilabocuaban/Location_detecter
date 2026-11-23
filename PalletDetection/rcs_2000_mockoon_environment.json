@@ -1,0 +1,172 @@
+{
+  "uuid": "rcs-2000-mock-env-uuid-001",
+  "lastMigration": 32,
+  "name": "RCS-2000 Mock Server",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 8182,
+  "hostname": "127.0.0.1",
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "route-gen-agv-task-001",
+      "type": "http",
+      "documentation": "Endpoint tao task AGV RCS-2000 Section 5.2.1",
+      "method": "post",
+      "endpoint": "rcms/services/rest/hikRpcService/genAgvSchedulingTask",
+      "responses": [
+        {
+          "uuid": "resp-success-001",
+          "body": "{\n  \"code\": \"0\",\n  \"message\": \"successful\",\n  \"reqCode\": \"{{body 'reqCode'}}\",\n  \"data\": \"TASK_{{now 'yyyyMMddHHmmss'}}\"\n}",
+          "latency": 50,
+          "statusCode": 200,
+          "label": "200 - Thanh cong nghiep vu (Success)",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        },
+        {
+          "uuid": "resp-biz-err-002",
+          "body": "{\n  \"code\": \"1\",\n  \"message\": \"Task template does not exist.\",\n  \"reqCode\": \"{{body 'reqCode'}}\",\n  \"data\": null\n}",
+          "latency": 50,
+          "statusCode": 200,
+          "label": "200 - Loi nghiep vu (Business Error)",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "taskTyp",
+              "value": "INVALID_TASK_TYPE",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "resp-server-err-003",
+          "body": "{\n  \"timestamp\": \"{{now}}\",\n  \"status\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"HikRpcService internal exception occurred.\"\n}",
+          "latency": 50,
+          "statusCode": 500,
+          "label": "500 - Loi may chu (Server Error)",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "taskTyp",
+              "value": "SERVER_ERROR",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "resp-timeout-004",
+          "body": "{\n  \"code\": \"0\",\n  \"message\": \"delayed response\"\n}",
+          "latency": 15000,
+          "statusCode": 200,
+          "label": "Timeout Simulation (Delay 15 giay)",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "taskTyp",
+              "value": "TIMEOUT_TEST",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        }
+      ],
+      "enabled": true,
+      "responseMode": null
+    }
+  ],
+  "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "route-gen-agv-task-001"
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": true,
+  "headers": [
+    {
+      "key": "Access-Control-Allow-Origin",
+      "value": "*"
+    },
+    {
+      "key": "Access-Control-Allow-Methods",
+      "value": "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"
+    },
+    {
+      "key": "Access-Control-Allow-Headers",
+      "value": "Content-Type, Origin, Accept, Authorization, Content-Length, X-Requested-With"
+    }
+  ],
+  "proxyReqHeaders": [],
+  "proxyResHeaders": [],
+  "data": [],
+  "callbacks": []
+}

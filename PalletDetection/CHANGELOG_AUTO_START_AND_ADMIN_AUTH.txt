@@ -1,0 +1,87 @@
+﻿================================================================================
+NHẬT KÝ NÂNG CẤP HỆ THỐNG: TỰ ĐỘNG KHỞI TẠO, ĐIỀU KHIỂN REALTIME & BẢO MẬT ADMIN
+Ứng dụng: PalletDetection / LOCATION DETECTER
+Thời gian cập nhật: 27/10/2026
+================================================================================
+
+1. MỤC TIÊU NÂNG CẤP
+--------------------------------------------------------------------------------
+- Tự động nạp cấu hình đã lưu, nạp model AI ONNX (best2.onnx), tự kết nối camera và khôi phục vùng ROI khi mở ứng dụng.
+- Người vận hành không cần nhập lại mật khẩu camera hoặc bấm nút kết nối thủ công.
+- Không tự chạy YOLO realtime khi mở ứng dụng; chỉ bắt đầu khi người vận hành nhấn 'KHỞI ĐỘNG REALTIME'.
+- Cung cấp nút 'DỪNG REALTIME' trên Tab Operation để kết thúc realtime nhưng vẫn giữ camera kết nối và Live stream.
+- Tab Configuration yêu cầu xác thực Quản trị viên (Admin) trước khi cho phép sửa hoặc lưu cấu hình. Mật khẩu mặc định: 'Etek@2026'.
+- Bảo vệ mật khẩu camera bằng Windows DPAPI (camera_config.json) và mật khẩu Admin bằng SHA-256 kèm Salt ngẫu nhiên (admin_config.json).
+- Xử lý triệt để 8 lỗi tiềm ẩn (Race condition, Trạng thái ảo, Xung đột Live View, Treo khi dừng, Đóng ứng dụng đệ quy, Lỗi chuyển camera, Lỗi DPAPI, Lỗi cấu hình mặc định).
+
+2. DANH SÁCH FILE THAY ĐỔI VÀ TẠO MỚI
+--------------------------------------------------------------------------------
+[TẠO MỚI]
+- Models\CameraConfig.cs:
+  + Lưu trữ IP, Port, Username và mật khẩu mã hóa DPAPI (DataProtectionScope.LocalMachine kết hợp Entropy).
+  + Phương thức SetPassword, GetDecryptedPassword (có fallback an toàn về 'Etek@2026' khi DPAPI lỗi).
+  + LoadOrCreateDefault() tự động sao lưu .corrupt_bak_ nếu JSON hỏng để bảo toàn dữ liệu.
+- Models\AdminAuthConfig.cs:
+  + Quản lý xác thực quản trị viên bằng SHA-256 + 16 bytes Salt ngẫu nhiên.
+  + Mật khẩu mặc định khởi tạo: 'Etek@2026'.
+  + Phương thức SetPassword(), VerifyPassword(), LoadOrCreateDefault().
+- camera_config.json:
+  + File cấu hình camera tự động sinh tại thư mục chạy, chứa mật khẩu mã hóa DPAPI Base64.
+- admin_config.json:
+  + File cấu hình quản trị viên tự động sinh tại thư mục chạy, chứa Salt và SHA-256 hash Base64.
+
+[CẬP NHẬT]
+- PalletDetection.csproj:
+  + Thêm reference 'System.Security' có sẵn trong .NET Framework 4.8.
+  + Thêm compile Models\CameraConfig.cs và Models\AdminAuthConfig.cs.
+  + Thêm None Include CopyToOutputDirectory cho camera_config.json và admin_config.json.
+- MainWindow.xaml:
+  + Tab Operation: Thêm Block trạng thái hệ thống txtSystemStatus, nút btnStartOperation ('KHỞI ĐỘNG REALTIME', màu xanh lá cây) và nút btnStopOperation ('DỪNG REALTIME', màu đỏ).
+  + Tab Configuration: Thêm Border xác thực quản trị viên (txtAdminPassword, btnAdminLogin, btnAdminLogout, txtAdminStatus).
+  + Bọc toàn bộ các vùng cấu hình trong StackPanel pnlAdminConfig với IsEnabled='False' theo mặc định khi chưa đăng nhập.
+  + Thêm nút btnSaveCameraConfig ('LƯU CẤU HÌNH CAMERA (DPAPI)') để admin chủ động lưu thông tin camera mới.
+- MainWindow.xaml.cs:
+  + Thêm enum RealTimeState (Stopped, Starting, Running, Stopping) và SemaphoreSlim _operationLock(1, 1).
+  + Thêm cờ _renderOwner (0 = None, 1 = LiveTimer, 2 = RealTime) loại bỏ triệt để nhấp nháy Live View.
+  + Tự động khởi tạo hệ thống trong luồng nền qua AutoConnectAndInitSystemAsync().
+  + Đánh giá toàn diện trạng thái hệ thống qua EvaluateSystemReadiness().
+  + Quản lý đóng ứng dụng an toàn qua 2 cờ _isCleaningUp và _isCleanupDone.
+  + Triển khai btnStartOperation_Click, btnStopOperation_Click, btnAdminLogin_Click, btnAdminLogout_Click, btnSaveCameraConfig_Click.
+
+3. CHI TIẾT GIẢI QUYẾT 8 RỦI RO TIỀM ẨN
+--------------------------------------------------------------------------------
+(1) Realtime race condition:
+    -> Khóa tác vụ bằng SemaphoreSlim _operationLock (1, 1) kết hợp máy trạng thái khép kín. Khi bấm Start, nút Start và Stop đều bị vô hiệu hóa trong lúc khởi tạo. Không thể bấm Start/Stop liên tục tạo nhiều task chạy đè.
+(2) Trạng thái ảo:
+    -> Không cập nhật trạng thái RUNNING ngay tại UI thread. Trạng thái chỉ chuyển RUNNING từ trong task nền sau khi frame đầu tiên inference và annotate thành công. Nếu lỗi ngay frame đầu, hệ thống tự động reset về STOPPED và đánh giá lại.
+    -> Trạng thái READY chỉ hiển thị khi Camera đang Live và Model AI đã nạp thành công.
+(3) Live View xung đột frame:
+    -> Sử dụng cờ độc quyền _renderOwner. Khi Realtime chạy, _renderOwner = 2 và LiveTimer bị dừng. Khi LiveTimer_Tick được gọi do hàng đợi Dispatcher, nó kiểm tra _renderOwner == 2 và bỏ qua ngay lập tức, loại bỏ 100% hiện tượng xung đột và nhấp nháy frame.
+(4) Dừng tác vụ không bị treo:
+    -> Sử dụng Task.WhenAny(_realTimeTask, Task.Delay(3000)) bất đồng bộ kèm CancellationTokenSource, không bao giờ dùng Task.Wait() gây deadlock trên UI thread.
+(5) Đóng ứng dụng an toàn:
+    -> Sử dụng 2 cờ _isCleaningUp và _isCleanupDone trong Window_Closing. Nếu đang dọn dẹp, lệnh gọi đóng tiếp theo bị chặn để loại bỏ hoàn toàn đệ quy vô hạn Close().
+(6) Lỗi chuyển camera:
+    -> Tách biệt thao tác thử kết nối thủ công và lưu cấu hình. Chỉ ghi file camera_config.json khi admin chủ động bấm nút 'LƯU CẤU HÌNH CAMERA'. Kết nối thử nghiệm thất bại không làm mất cấu hình đã lưu.
+(7) Lỗi DPAPI:
+    -> Sử dụng DataProtectionScope.LocalMachine kết hợp entropy bổ sung. Nếu sang máy khác không giải mã được do khác khóa DPAPI máy, hệ thống tự động fallback an toàn về mật khẩu mặc định 'Etek@2026' mà không làm sập ứng dụng.
+(8) Lỗi cấu hình mặc định:
+    -> Khi file cấu hình JSON bị hỏng, phương thức LoadOrCreateDefault tự động đổi tên file hỏng thành .corrupt_bak_{timestamp} để bảo toàn dữ liệu gốc trước khi tạo cấu hình chuẩn mới.
+
+4. HƯỚNG DẪN VẬN HÀNH DÀNH CHO NGƯỜI DÙNG
+--------------------------------------------------------------------------------
+1. Khởi động ứng dụng:
+   - Mở ứng dụng, hệ thống tự động nạp cấu hình, nạp model ONNX (best2.onnx), kết nối camera và phát Live View.
+   - Khi dòng trạng thái hiển thị: 'HỆ THỐNG: SẴN SÀNG (READY)', nút 'KHỞI ĐỘNG REALTIME' màu xanh lá sẽ sáng lên.
+2. Bắt đầu nhận diện RealTime:
+   - Nhấn nút 'KHỞI ĐỘNG REALTIME' trên Tab Operation.
+   - Hệ thống chuyển sang trạng thái: 'HỆ THỐNG: ĐANG CHẠY REALTIME (RUNNING)', nút 'DỪNG REALTIME' màu đỏ sáng lên.
+3. Dừng nhận diện:
+   - Nhấn nút 'DỪNG REALTIME' trên Tab Operation. RealTime kết thúc an toàn, camera vẫn tiếp tục phát Live View bình thường.
+4. Cấu hình quản trị viên (Admin):
+   - Chuyển sang Tab Configuration.
+   - Nhập mật khẩu quản trị (Mặc định: Etek@2026) vào ô 'Mật khẩu Quản trị' và bấm 'ĐĂNG NHẬP'.
+   - Sau khi đăng nhập thành công, toàn bộ các vùng cấu hình Camera, Stream, Model, ROI và RCS sẽ mở khóa để chỉnh sửa.
+   - Để lưu mật khẩu camera mới đã mã hóa, bấm 'LƯU CẤU HÌNH CAMERA (DPAPI)'.
+   - Bấm 'ĐĂNG XUẤT' sau khi hoàn tất cấu hình để khóa lại giao diện bảo vệ.
+================================================================================

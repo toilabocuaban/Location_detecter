@@ -1,0 +1,225 @@
+{
+  "uuid": "c7e41d90-2b35-4a8e-91c2-6f4a8d204200",
+  "lastMigration": 33,
+  "name": "RCS-2000 V4.2 Apply Task Mock Server",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 8182,
+  "hostname": "127.0.0.1",
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "f402a1b0-3c4d-4e5f-8091-123456789001",
+      "type": "http",
+      "documentation": "Endpoint Apply Task RCS-2000 V4.2.0 (Mục 2.1.2): POST /rcs/rtas/api/robot/controller/task/submit",
+      "method": "post",
+      "endpoint": "rcs/rtas/api/robot/controller/task/submit",
+      "responses": [
+        {
+          "uuid": "f402a1b0-3c4d-4e5f-8091-123456789011",
+          "body": "{\n  \"code\": \"SUCCESS\",\n  \"message\": \"succeeded\",\n  \"data\": {\n    \"robotTaskCode\": \"TASK_{{now 'yyyyMMddHHmmss'}}\",\n    \"extra\": null\n  }\n}",
+          "latency": 50,
+          "statusCode": 200,
+          "label": "200 - Thành công nghiệp vụ (SUCCESS)",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "X-lr-request-id",
+              "value": "{{header 'X-lr-request-id'}}"
+            },
+            {
+              "key": "X-lr-trace-id",
+              "value": "{{header 'X-lr-trace-id'}}"
+            },
+            {
+              "key": "X-lr-version",
+              "value": "v1.0"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f402a1b0-3c4d-4e5f-8091-123456789012",
+          "body": "{\n  \"code\": \"Err_TaskTypeNotSupport\",\n  \"message\": \"Task type is not supported.\",\n  \"data\": null\n}",
+          "latency": 50,
+          "statusCode": 200,
+          "label": "200 - Lỗi nghiệp vụ (Err_TaskTypeNotSupport)",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "X-lr-request-id",
+              "value": "{{header 'X-lr-request-id'}}"
+            },
+            {
+              "key": "X-lr-trace-id",
+              "value": "{{header 'X-lr-trace-id'}}"
+            },
+            {
+              "key": "X-lr-version",
+              "value": "v1.0"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "taskType",
+              "value": "INVALID_TASK_TYPE",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f402a1b0-3c4d-4e5f-8091-123456789013",
+          "body": "{\n  \"code\": \"Err_Internal\",\n  \"message\": \"Unknown internal error.\",\n  \"data\": null\n}",
+          "latency": 50,
+          "statusCode": 500,
+          "label": "500 - Lỗi máy chủ (Server Error)",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "X-lr-request-id",
+              "value": "{{header 'X-lr-request-id'}}"
+            },
+            {
+              "key": "X-lr-version",
+              "value": "v1.0"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "taskType",
+              "value": "SERVER_ERROR",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f402a1b0-3c4d-4e5f-8091-123456789014",
+          "body": "{\n  \"code\": \"SUCCESS\",\n  \"message\": \"delayed response\",\n  \"data\": {\n    \"robotTaskCode\": \"TASK_DELAYED\",\n    \"extra\": null\n  }\n}",
+          "latency": 15000,
+          "statusCode": 200,
+          "label": "Timeout Simulation (Delay 15 giây)",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "X-lr-request-id",
+              "value": "{{header 'X-lr-request-id'}}"
+            },
+            {
+              "key": "X-lr-version",
+              "value": "v1.0"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "taskType",
+              "value": "TIMEOUT_TEST",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    }
+  ],
+  "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "f402a1b0-3c4d-4e5f-8091-123456789001"
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": true,
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json; charset=utf-8"
+    },
+    {
+      "key": "Access-Control-Allow-Origin",
+      "value": "*"
+    },
+    {
+      "key": "Access-Control-Allow-Methods",
+      "value": "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"
+    },
+    {
+      "key": "Access-Control-Allow-Headers",
+      "value": "Content-Type, Origin, Accept, Authorization, Content-Length, X-Requested-With, X-lr-request-id, X-lr-trace-id, X-lr-version, X-lr-source"
+    }
+  ],
+  "proxyReqHeaders": [],
+  "proxyResHeaders": [],
+  "data": [],
+  "callbacks": []
+}

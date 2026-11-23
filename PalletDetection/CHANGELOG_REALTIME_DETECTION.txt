@@ -1,0 +1,56 @@
+================================================================================
+NHẬT KÝ THAY ĐỔI: TÍNH NĂNG REAL TIME DETECTION
+Ngày thực hiện: 14/10/2026
+Dự án: PalletDetection (WPF .NET Framework 4.8 / x64)
+================================================================================
+
+1. MỤC TIÊU:
+   Thêm tính năng Real Time Detection (nhận diện thời gian thực liên tục) trên hình ảnh camera
+   tại Tab Operation với đầy đủ các tiêu chuẩn an toàn đa luồng, quản lý bộ nhớ và trải nghiệm mượt mà.
+
+2. CÁC FILE ĐÃ SỬA ĐỔI:
+   - PalletDetection/Camera/CameraManager.cs:
+     + Thêm thuộc tính IsLiveRunning (bool) để kiểm tra luồng RTSP camera đang chạy hay không.
+     + Thêm thuộc tính IsConnected (bool) để kiểm tra kết nối RTSP của camera.
+     + Không thay đổi bất kỳ signature hay logic cũ nào.
+
+   - PalletDetection/MainWindow.xaml:
+     + Tại Tab "Operation": Bổ sung nút bấm btnRealTime ("REAL TIME DETECTION", Height=42, Background=#E8F4E8)
+       ngay dưới nút "NHẬN DIỆN (DETECTION)".
+
+   - PalletDetection/MainWindow.xaml.cs:
+     + Quản lý luồng nền (Background Loop):
+       Khởi tạo _realTimeTask chạy vòng lặp bất đồng bộ với CancellationTokenSource (_realTimeCts).
+       Tuyệt đối không tạo Task hay Timer mới ở mỗi frame; dùng một Task duy nhất trong suốt phiên Real Time.
+     + Kiểm tra điều kiện tiên quyết:
+       Trước khi kích hoạt, kiểm tra chặt chẽ: Model đã load chưa (_detector.IsLoaded),
+       Camera đã kết nối chưa (_cameraManager.IsConnected), Camera đã phát Live chưa (_cameraManager.IsLiveRunning).
+       Nếu thiếu, hiển thị thông báo MessageBox rõ ràng cho người dùng.
+     + Quản lý Live Timer:
+       * Khi bắt đầu Real Time: Tạm dừng _liveTimer để timer 33ms không gửi frame thô ghi đè lên frame đã annotate.
+       * Khi dừng Real Time: Chỉ bật lại _liveTimer nếu camera vẫn đang chạy live (_cameraManager.IsLiveRunning)
+         và cửa sổ chưa đóng (!-_isClosing).
+     + Đồng bộ Inference:
+       Dùng chung _inferenceLock (object). Khóa này chỉ bao bọc lời gọi _detector.Detect(currentFrame, currentRoi).
+       Không giữ khóa trong lúc gọi AnnotateImage, Freeze() hay Dispatcher cập nhật UI.
+       Chặn btnDetect_Click khi Real Time đang chạy để đảm bảo chỉ có tối đa 1 suy luận tại một thời điểm.
+     + Quyền sở hữu và giải phóng Frame (Frame Ownership):
+       Mỗi chu kỳ lấy frame bằng using (Mat currentFrame = _cameraManager.GetCurrentMat()).
+       Frame là bản sao clone độc lập từ FrameBuffer, tự động giải phóng sạch sau mỗi vòng lặp.
+       Kiểm tra đầy đủ điều kiện null và frame.Empty().
+     + Cập nhật UI & Bounding Box (Zero-Ghosting):
+       Vẽ kết quả trên frame hiện tại qua _detector.AnnotateImage.
+       Chuyển đổi sang BitmapSource, gọi .Freeze() để chuyển luồng WPF an toàn.
+       Đẩy lên UI thread qua Dispatcher.BeginInvoke.
+       Khi không có đối tượng hợp lệ (detections.Count == 0), ảnh camera cùng khung ROI vẫn được hiển thị,
+       toàn bộ bounding box cũ tự động biến mất hoàn toàn.
+     + Đóng cửa sổ an toàn (Async Window Closing):
+       Triển khai Window_Closing theo quy trình bất đồng bộ:
+       - Hủy đóng tức thì bằng e.Cancel = true.
+       - Hủy token Real Time, chờ await _realTimeTask kết thúc sạch mà không chặn UI thread.
+       - Gọi _cameraManager.Dispose() và _detector?.Dispose().
+       - Đặt cờ _isClosingCompleted = true rồi gọi Close() để đóng hoàn tất, tránh lặp vô hạn.
+
+3. KẾT QUẢ BIÊN DỊCH:
+   - MSBuild x64 Debug: THÀNH CÔNG (0 Error, 1 Warning pre-existing CS0414).
+================================================================================

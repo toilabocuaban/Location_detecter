@@ -1,0 +1,94 @@
+================================================================================
+TÓM TẮT THAY ĐỔI: NÂNG CẤP LOCATION DETECTER SANG RCS-2000 API V4.2.0
+Ngày thực hiện: 2026-11-20
+Dự án: D:\work\vision\Location Detecter\Location Detecter\Program\Location Detecter 1\PalletDetection\PalletDetection.sln
+Tài liệu tham chiếu: D:\work\0. AutoScan\tài liệu API\UD41427B_RCS-2000 API Developer Guide_V4.2.0_20250116(1).md (Mục 2.1.2 Apply Task)
+================================================================================
+
+1. MỤC TIÊU VÀ QUY TẮC ĐÃ THỰC HIỆN:
+- Chuyển hoàn toàn phần giao tiếp RCS-2000 từ API V3.3 (genAgvSchedulingTask)
+  sang chuẩn RCS-2000 V4.2.0 (Mục 2.1.2 Apply Task: /rcs/rtas/api/robot/controller/task/submit).
+- Xóa các class thuần V3.3 cũ để chỉ chạy duy nhất V4.2.0.
+- Không bật chữ ký số (không gửi Authorization / X-lr-appkey / ?sign=).
+- Không gửi các trường tùy chọn initPriority, interrupt, deadline, groupCode, extra,
+  operation khi không cấu hình.
+- Giữ nguyên file mô phỏng Mockoon V3.3 cũ (rcs_2000_mockoon_environment.json) và
+  tạo riêng 1 file Mockoon V4.2 mới.
+
+2. ĐẶC TẢ GIAO TIẾP RCS-2000 V4.2.0 ĐÃ TRIỂN KHAI:
+- URL mặc định:
+  POST https://192.168.65.193/rcs/rtas/api/robot/controller/task/submit
+  (hỗ trợ chỉnh trực tiếp URL, Task Type, Robot Code, Pick-up, Drop-off trên tab Cấu hình).
+- HTTP Headers:
+  + X-lr-request-id: 16 ký tự hex duy nhất theo mỗi lần gọi Apply Task (RcsV4ApiClient).
+  + X-lr-version: v1.0
+  + X-lr-trace-id: 32 ký tự hex
+  + X-lr-source: ClientCode từ rcs_config.json (mặc định VISION_PALLET_APP)
+  + Content-Type: application/json; charset=utf-8
+  + Đã bật TLS 1.2 (ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12) cho https://.
+- JSON Request Body:
+  + Khi có Robot Code (mặc định "19781", hỗ trợ nhiều mã cách nhau dấu phẩy ','):
+    {
+      "taskType": "QF2",
+      "targetRoute": [
+        { "seq": 0, "type": "SITE", "code": "<PickupPosition>" },
+        { "seq": 1, "type": "SITE", "code": "<DropoffPosition>" }
+      ],
+      "robotType": "ROBOTS",
+      "robotCode": ["19781"]
+    }
+  + Khi xóa trống ô Robot Code: không gửi 2 trường "robotType" và "robotCode" để RCS-2000
+    tự động chọn xe AMR rảnh tối ưu theo tài liệu mục 2.1.2.
+- Xử lý Response:
+  + Thành công khi HTTP 200 và JSON code == "SUCCESS"; trích mã task từ data.robotTaskCode.
+  + Đối chiếu header X-lr-request-id trả về từ RCS.
+  + Vẫn giữ nguyên 6 phân loại kết quả (Success, BusinessError, HttpError, NetworkError,
+    Timeout, JsonParseError) và KHÔNG tự động retry khi lỗi/timeout để tránh tạo trùng task.
+- Tương thích ngược rcs_config.json cũ:
+  + RcsApiConfig.LoadOrCreateDefault() tự động nâng cấp endpointPath V3.3 cũ sang
+    /rcs/rtas/api/robot/controller/task/submit và bổ sung mặc định taskType="QF2",
+    robotCode="19781" nếu file cũ chưa có.
+
+3. FILE ĐÃ XÓA (V3.3 CŨ):
+- Rcs/Models/CreateTaskRequest.cs
+- Rcs/Models/PositionCodeItem.cs
+- Rcs/Client/RcsApiClient.cs
+- Rcs/Testing/RcsApiTester.cs
+
+4. FILE TẠO MỚI:
+- Rcs/Models/TargetRouteItem.cs: node lộ trình seq, type ("SITE"), code (tùy chọn operation/robotType/robotCode).
+- Rcs/Models/ApplyTaskRequest.cs: model request 2.1.2 Apply Task + Validate().
+- Rcs/Client/RcsV4ApiClient.cs: HTTP POST client chuẩn V4.2.0 (TLS 1.2, header X-lr-*, không tự retry).
+- Rcs/Testing/RcsV4ApiTester.cs: bộ kịch bản kiểm thử V4.2.0 độc lập.
+- rcs_2000_v4_2_mockoon_environment.json: file Mockoon V4.2.0 mới (port 8182, endpoint
+  /rcs/rtas/api/robot/controller/task/submit, 4 kịch bản SUCCESS / Err_TaskTypeNotSupport / 500 / Timeout).
+- CHANGELOG_RCS_V4_2_UPGRADE.txt (file này).
+
+5. FILE ĐÃ SỬA:
+- PalletDetection.csproj: gỡ 4 file V3.3, thêm 4 file V4.2 và copy rcs_2000_v4_2_mockoon_environment.json.
+- Rcs/Models/RcsApiResponse.cs: cập nhật parse JSON V4.2 (code == "SUCCESS", data.robotTaskCode).
+- Rcs/Models/RcsCallResult.cs: cập nhật comment theo code == "SUCCESS" (giữ nguyên toàn bộ public API).
+- Rcs/Config/RcsApiConfig.cs: cập nhật mặc định URL https://192.168.65.193 + /rcs/rtas/api/robot/controller/task/submit,
+  thêm TaskType ("QF2"), RobotCode ("19781"), SetFullOrBaseUrl(), ParseRobotCodes(), auto-migration V3.3.
+- rcs_config.json: cập nhật thông số mặc định V4.2.0.
+- Rcs/Automation/RcsTaskCycleManager.cs: chuyển sang gọi RcsV4ApiClient + ApplyTaskRequest;
+  giữ nguyên máy trạng thái 5 bước (2.0s thùng ổn định -> 1.0s vắng người -> gửi 1 lần -> 0.5s reset);
+  bổ sung UpdateTaskConfig(...).
+- MainWindow.xaml & MainWindow.xaml.cs: thêm các ô cấu hình RCS Apply Task URL, Task Type *,
+  Robot Code (trống: RCS tự chọn xe) trong mục RCS TASK CONFIGURATION (V4.2) và lưu vào rcs_config.json.
+
+6. KẾT QUẢ BUILD & KIỂM TRA:
+- MSBuild Release|x64: THÀNH CÔNG (0 errors) -> bin\x64\Release\PalletDetection.exe
+- MSBuild Debug|x64: THÀNH CÔNG (0 errors) -> bin\x64\Debug\PalletDetection.exe
+- Bộ kiểm chứng tự động (VerifyRcsV4): kiểm tra mặc định config, tách/ghép URL, auto-migrate V3.3,
+  header V4.2, payload có/không robotCode, xử lý SUCCESS / BusinessError / HTTP 500 / Timeout không retry,
+  và chu kỳ RcsTaskCycleManager end-to-end.
+
+7. LƯU Ý KHI VẬN HÀNH THẬT VỚI HTTPS://192.168.65.193:
+- Nếu server RCS-2000 thật dùng HTTPS với chứng chỉ tự ký (self-signed), Windows cần được cài
+  chứng chỉ CA/server vào Trusted Root Certification Authorities trên máy trạm để HttpClient
+  kết nối được mà không báo lỗi SSL/TLS.
+- Khi test với Mockoon mới (rcs_2000_v4_2_mockoon_environment.json), đổi ô RCS Apply Task URL
+  trong tab Admin sang: http://127.0.0.1:8182/rcs/rtas/api/robot/controller/task/submit
+  rồi bấm SAVE RCS CONFIGURATION.
+================================================================================

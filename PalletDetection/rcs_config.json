@@ -1,0 +1,11 @@
+{
+  "baseUrl": "https://192.168.65.193",
+  "endpointPath": "/rcs/rtas/api/robot/controller/task/submit",
+  "taskType": "QF2",
+  "robotCode": "19781",
+  "tokenCode": "",
+  "clientCode": "VISION_PALLET_APP",
+  "timeoutSeconds": 5,
+  "pickupPosition": "ETEK42",
+  "dropoffPosition": "ETEK44"
+}

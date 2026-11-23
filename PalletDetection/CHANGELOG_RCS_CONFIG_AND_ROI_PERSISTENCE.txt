@@ -1,0 +1,59 @@
+﻿================================================================================
+NHAT KY THAY DOI: CAU HINH VI TRI RCS TASK VA LUU VUNG ROI TU DONG
+Ngay thuc hien: 20/10/2026
+================================================================================
+
+1. MUC TIEU TINH NANG:
+   - Bo sung khu vuc "RCS TASK CONFIGURATION" tren Tab Configuration de nguoi dung 
+     co the tuy chinh 2 vi tri:
+     + Pick-up Position: Ma vi tri nhan hang (mac dinh "ETEK42").
+     + Drop-off Position: Ma vi tri gui hang (mac dinh "ETEK44").
+     + Nut "SAVE RCS CONFIGURATION" de luu vao file rcs_config.json va cap nhat nong vao bo quan ly chu ky RCS.
+   - Bo sung nut "LUU ROI" (Save ROI) trong khu vuc ROI SETTINGS tren Tab Configuration.
+     + Vung ROI da luu se tu dong mo/nap lai moi khi bat ung dung ma khong can ve lai.
+
+2. DANH SACH TEP TIN:
+   [TAO MOI]:
+   - PalletDetection\Models\RoiConfig.cs:
+     + Model quan ly toa do ROI (X, Y, Width, Height, HasRoi).
+     + Ho tro ToRect(), FromRect(Rect?), SaveToFile(), LoadFromFile().
+     + Luu tai file: roi_config.json cung thu muc thuc thi cua ung dung.
+
+   [SUA DOI]:
+   - PalletDetection\PalletDetection.csproj:
+     + Dang ky bien dich tep Models\RoiConfig.cs vao project.
+   - PalletDetection\Rcs\Config\RcsApiConfig.cs:
+     + Bo sung 2 thuoc tinh: PickupPosition (mac dinh "ETEK42") va DropoffPosition (mac dinh "ETEK44").
+   - PalletDetection\rcs_config.json:
+     + Bo sung 2 truong JSON: "pickupPosition": "ETEK42", "dropoffPosition": "ETEK44".
+   - PalletDetection\Rcs\Automation\RcsTaskCycleManager.cs:
+     + Bo sung thuoc tinh Config => _config va phuong thuc UpdatePositions(pickup, dropoff).
+     + Trong SendTaskInternalAsync(): Lay dong 2 vi tri tu _config.PickupPosition va _config.DropoffPosition 
+       de truyen vao PositionCodePath thay vi hardcode.
+     + Cap nhat dong log chi tiet Pick-up va Drop-off khi phat lenh tao task.
+   - PalletDetection\MainWindow.xaml:
+     + Khu vuc ROI SETTINGS: Them nut btnSaveRoi ("LUU ROI").
+     + Khu vuc RCS TASK CONFIGURATION: Them TextBlock, txtPickupPosition, txtDropoffPosition va btnSaveRcsConfig ("SAVE RCS CONFIGURATION").
+   - PalletDetection\MainWindow.xaml.cs:
+     + Constructor: Goi AutoLoadSavedRoi() de tu dong nap ROI da luu, va InitRcsTaskConfigUi() de nap 2 vi tri len UI.
+     + Them btnSaveRoi_Click: Luu vung ROI hien tai vao roi_config.json va hien thong bao.
+     + Them btnSaveRcsConfig_Click: Kiem tra hop le, luu vao rcs_config.json, cap nhat _rcsCycleManager va ghi log.
+
+3. KET QUA KIEM TRA:
+   - Rebuild toan bo project voi MSBuild: THANH CONG (0 Errors, 0 Warnings).
+   - Unit Logic Test:
+     + RoiConfig Save & Load: Dung toa do 100%.
+     + RcsTaskCycleManager Dynamic Positions: Cap nhat nong va dong goi payload JSON dung chuan Hikrobot RCS-2000.
+   - Smoke Test: PalletDetection.exe khoi dong on dinh, nap day du thu vien va tu dong nap ROI/RCS config thanh cong.
+
+4. HUONG DAN SU DUNG:
+   - Chinh vi tri RCS:
+     + Vao Tab Configuration -> Khu vuc "RCS TASK CONFIGURATION".
+     + Nhap ma Pick-up Position va Drop-off Position.
+     + Bam "SAVE RCS CONFIGURATION".
+   - Ve va Luu ROI:
+     + Vao Tab Configuration -> Khu vuc "ROI SETTINGS".
+     + Bam "TAO ROI" va keo chuot tren anh camera de tao vung.
+     + Bam "LUU ROI". Thong bao thanh cong se hien ra.
+     + Lan sau khi mo lai ung dung, vung ROI nay se duoc tu dong nap san sang cho Single Detection / Real Time.
+================================================================================

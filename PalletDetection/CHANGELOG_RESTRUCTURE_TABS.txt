@@ -1,0 +1,58 @@
+================================================================================
+NHẬT KÝ THAY ĐỔI CẤU TRÚC GIAO DIỆN (TABCONTROL: OPERATION & CONFIGURATION)
+Ngày thực hiện: 14/10/2026
+Dự án: PalletDetection (WPF .NET Framework 4.8 / x64)
+================================================================================
+
+1. MỤC TIÊU:
+   Tổ chức lại bảng điều khiển bên trái từ dạng danh sách cuộn đơn thành TabControl gồm 2 Tab:
+   - Tab "Operation" (Vận hành)
+   - Tab "Configuration" (Cấu hình)
+   Giữ nguyên toàn bộ logic nghiệp vụ, camera streaming, ONNX inference, ROI và event handlers hiện có.
+
+2. CHI TIẾT CẤU TRÚC GIAO DIỆN:
+   - MainWindow.xaml:
+     + Cột trái (Column 0, width=340): Đặt TabControl x:Name="tabMain".
+     + TabItem "Operation":
+       * Nút START LIVE (btnStartLive)
+       * Nút STOP LIVE (btnStopLive)
+       * Nút SAVE IMAGE (btnSaveImage)
+       * Nút NHẬN DIỆN (DETECTION) (btnDetect)
+       * Bảng tóm tắt kết quả phát hiện (txtDetectSummary)
+       * Thông tin trạng thái nhanh: txtOpModelInfo, txtOpRoiInfo (đồng bộ tự động)
+     + TabItem "Configuration":
+       * Nhóm CAMERA CONNECTION:
+         - txtIP (192.168.1.64)
+         - txtPort (8000)
+         - txtUsername (admin)
+         - txtPassword (PasswordBox)
+         - Nút CONNECT CAMERA (btnConnect)
+       * Nhóm MODEL SETTINGS:
+         - txtModelStatus (Hiển thị model đang nạp)
+         - Nút CHỌN MODEL (.ONNX) (btnSelectModel)
+       * Nhóm ROI SETTINGS:
+         - txtRoiStatus (Hiển thị tọa độ ROI)
+         - Nút TẠO ROI (btnDrawRoi)
+         - Nút XÓA ROI (btnClearRoi)
+     + Cột phải (Column 2):
+       * Giữ nguyên LIVE VIEW với imgLive và canvasRoi để quan sát ảnh và vẽ ROI trực quan cho cả 2 tab.
+
+3. CHI TIẾT CODE-BEHIND (MainWindow.xaml.cs):
+   - Giữ nguyên 100% các hàm và chữ ký hàm (signature):
+     + btnConnect_Click
+     + btnStartLive_Click
+     + btnStopLive_Click
+     + btnSaveImage_Click
+     + btnSelectModel_Click
+     + btnDetect_Click
+     + btnDrawRoi_Click
+     + btnClearRoi_Click
+     + canvasRoi_MouseDown, canvasRoi_MouseMove, canvasRoi_MouseUp
+     + gridLiveContainer_SizeChanged
+     + LiveTimer_Tick, Window_Closing, AutoLoadDefaultModel
+   - Bổ sung đồng bộ txtOpModelInfo và txtOpRoiInfo để Tab Operation luôn hiển thị chính xác model và vùng ROI đang có hiệu lực.
+
+4. KẾT QUẢ BUILD & KIỂM TRA:
+   - Biên dịch bằng MSBuild x64 Debug: THÀNH CÔNG (0 Error, 1 Warning CS0414 cũ không liên quan).
+   - Đảm bảo tương thích ngược: tất cả chức năng cũ hoạt động bình thường, không sửa config, không thêm thư viện mới ngoài OnnxRuntime đã cài trước đó.
+================================================================================
